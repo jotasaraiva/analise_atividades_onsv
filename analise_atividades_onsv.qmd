@@ -1,0 +1,113 @@
+---
+title: "Análise de Atividades ONSV"
+author: "João Saraiva"
+format: html
+editor: visual
+---
+
+```{r}
+library(tidyverse)
+library(writexl)
+```
+
+```{r}
+df <- read_csv(
+  "data-headers.csv"
+  ) |> 
+  rename(usuario_empresa = `usuario-empresa`)
+
+df
+```
+
+```{r}
+atividades_onsv <- df |> 
+  separate(usuario_empresa, sep = " - ", into = c("usuario", "empresa")) |>
+  separate(data, sep = " - ", into = c("data","horario")) |> 
+  mutate(
+    empresa = if_else(is.na(empresa), "OBSERVATORIO", empresa),
+    data = data |> dmy()
+  )
+
+atividades_onsv
+```
+
+```{r}
+relatorio_arquivos_onsv <- atividades_onsv |> 
+  select(data, usuario, empresa, atividade, objeto) |> 
+  mutate(
+    tipo_arquivo = case_when(
+      grepl("podcast",objeto) ~ "podcast",
+      grepl("boletim",objeto) ~ "podcast",
+      grepl("video|vid",objeto) ~ "video",
+      grepl("texto",objeto) ~ "texto",
+      grepl("certificado",objeto) ~ "certificado",
+      grepl("post|meme",objeto) ~ "post",
+      is.na(objeto) ~ NA,
+      TRUE ~ "outros"
+    ),
+    empresa = empresa |> tolower()
+  ) |> 
+  filter(
+    !(empresa %in% c("observatorio","onsv","observador","observat&oacute;rio"))
+  ) |> 
+  mutate(
+    empresa = case_when(
+      empresa == "logisticafit" ~ "logfit",
+      empresa == "mercedes-benz" ~ "mercedes benz",
+      empresa == "ribeir&atilde;o preto" ~ "ribeirao preto",
+      empresa == "sousa cruz" ~ "souza cruz",
+      empresa == "jundia&amp;iacute;" ~ "jundiai",
+      empresa == "s&atilde;o jos&eacute; dos campos" ~ "sao jose dos campos",
+      empresa == "fretad&atilde;o" ~ "fretadao",
+      empresa == "i9 transportes rodovi&amp;aacute;rios" ~ "i9 transportes rodoviarios",
+      empresa == "via&ccedil;&atilde;o raissa" ~ "viacao raissa",
+      empresa == "ags diagn&oacute;sticos" ~ "ags",
+      empresa == "petrobr&amp;aacute;s" ~ "petrobras",
+      empresa == "via&ccedil;&atilde;o santa cruz" ~ "viacao santa cruz",
+      empresa == "sindipe&amp;ccedil;as" ~ "sindipecas",
+      empresa == "p2 prote&ccedil;&atilde;o sma" ~ "p2 protecao sma",
+      empresa == "lm cursos de tr&amp;acirc;nsito" ~ "lm cursos de transito",
+      empresa == "paul&amp;iacute;nia" ~ "paulinia",
+      empresa == "porto a&ccedil;u" ~ "porto acu",
+      empresa == "secretaria de log&iacute;stica" ~ "secretaria de logistica",
+      empresa == "secretaria de log&iacute;stica sp" ~ "secretaria de logistica sp",
+      TRUE ~ empresa
+    )
+  ) |> 
+  drop_na()
+  
+  
+relatorio_arquivos_onsv
+```
+
+
+```{r}
+relatorio_arquivos_onsv$atividade |> unique() 
+```
+
+```{r}
+relatorio_arquivos_onsv |> filter(str_detect(atividade, "\\(usuário\\)"))
+```
+
+```{r}
+atividades_onsv$atividade |> unique()
+```
+
+
+```{r}
+downloads_clientes_onsv <- relatorio_arquivos_onsv |> 
+  filter(str_detect(atividade,"\\(cliente\\)")) |> 
+  select(data, usuario, empresa, objeto, tipo_arquivo)
+
+downloads_clientes_onsv
+```
+
+```{r}
+downloads_clientes_onsv$tipo_arquivo |> unique()
+```
+
+
+```{r}
+write_xlsx(downloads_clientes_onsv,"downloads_clientes_onsv.xlsx")
+```
+
